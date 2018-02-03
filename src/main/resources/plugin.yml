@@ -1,0 +1,6 @@
+name: EPCO
+main: com.ulfric.enterprisepayments.checkout.EpcoPlugin
+version: ${project.version}
+author: Ulfric LLC
+website: ulfric.com
+description: Enterprise Payments Checkout plugin component
