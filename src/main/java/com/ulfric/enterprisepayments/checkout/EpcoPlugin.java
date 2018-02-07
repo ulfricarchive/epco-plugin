@@ -1,5 +1,6 @@
 package com.ulfric.enterprisepayments.checkout;
 
+import java.text.NumberFormat;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
@@ -29,7 +30,7 @@ public class EpcoPlugin extends JavaPlugin implements Runnable {
 
 	@Override
 	public void onEnable() {
-		saveConfig();
+		saveDefaultConfig();
 		long delay = 20 * TimeUnit.MINUTES.toSeconds(2);
 		getServer().getScheduler().runTaskTimerAsynchronously(this, this, delay, delay);
 	}
@@ -47,10 +48,16 @@ public class EpcoPlugin extends JavaPlugin implements Runnable {
 		String url = url();
 		Request getCommandsRequest = new Request.Builder().url(url).get().build();
 		Response getCommandsResponse = client.newCall(getCommandsRequest).execute();
+		if (getCommandsResponse.code() != 200) {
+			getLogger().severe("Got response code: " + getCommandsResponse.code() + " from GetCommands");
+			return;
+		}
 		DueCommands due = gson.fromJson(getCommandsResponse.body().string(), DueCommands.class);
 		if (due != null && due.getCommands() != null && !due.getCommands().isEmpty()) {
+			NumberFormat format = NumberFormat.getIntegerInstance();
 			List<Command> stillDueList = runCommands(due.getCommands());
 			if (!stillDueList.isEmpty()) {
+				getLogger().info("Pending commands remaining: " + format.format(stillDueList.size()));
 				DueCommands stillDue = new DueCommands();
 				stillDue.setCommands(stillDueList);
 				String body = gson.toJson(stillDue);
@@ -59,6 +66,9 @@ public class EpcoPlugin extends JavaPlugin implements Runnable {
 					getLogger().severe("Failed to requeue commands: " + body);
 				}
 			}
+			getLogger().info("Pending commands executed: " + format.format(due.getCommands().size() - stillDueList.size()) + " / " + format.format(due.getCommands().size()));
+		} else {
+			getLogger().info("No pending commands were found");
 		}
 	}
 
